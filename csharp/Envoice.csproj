@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>12</LangVersion>
+    <RootNamespace>Envoice</RootNamespace>
+
+    <PackageId>Envoice</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>envoice.dev</Authors>
+    <Description>Official .NET SDK for envoice.dev - Generate ZUGFeRD/Factur-X invoices</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://envoice.dev</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/steviee/envoice-clients</RepositoryUrl>
+    <PackageTags>envoice;zugferd;factur-x;invoice;pdf;e-invoice;eu;en16931</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

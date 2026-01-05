@@ -1,0 +1,64 @@
+{
+  "name": "@envoice/sdk",
+  "version": "0.1.0",
+  "description": "Official envoice.dev SDK for generating ZUGFeRD/Factur-X invoices",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./node": {
+      "import": "./dist/node.mjs",
+      "require": "./dist/node.js",
+      "types": "./dist/node.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "envoice",
+    "zugferd",
+    "factur-x",
+    "invoice",
+    "pdf",
+    "e-invoice",
+    "eu",
+    "en16931"
+  ],
+  "author": "envoice.dev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/steviee/envoice-clients.git",
+    "directory": "typescript"
+  },
+  "homepage": "https://envoice.dev",
+  "bugs": {
+    "url": "https://github.com/steviee/envoice-clients/issues"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

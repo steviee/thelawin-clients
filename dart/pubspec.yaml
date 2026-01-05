@@ -1,0 +1,17 @@
+name: envoice
+description: Official Dart SDK for envoice.dev - Generate ZUGFeRD/Factur-X invoices
+version: 0.1.0
+homepage: https://envoice.dev
+repository: https://github.com/steviee/envoice-clients
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+  mockito: ^5.4.0
+  build_runner: ^2.4.0
