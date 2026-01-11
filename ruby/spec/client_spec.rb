@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe Envoice::Client do
+RSpec.describe Thelawin::Client do
   let(:api_key) { "env_sandbox_test" }
   let(:client) { described_class.new(api_key: api_key) }
 
@@ -17,49 +17,76 @@ RSpec.describe Envoice::Client do
     end
 
     it "uses default options" do
-      expect(client.api_url).to eq("https://api.envoice.dev")
+      expect(client.base_url).to eq("https://api.thelawin.dev")
+      expect(client.environment).to eq(:production)
       expect(client.timeout).to eq(30)
     end
 
     it "accepts custom options" do
       custom_client = described_class.new(
         api_key: api_key,
-        api_url: "https://custom.api.url",
+        base_url: "https://custom.api.url",
         timeout: 60
       )
-      expect(custom_client.api_url).to eq("https://custom.api.url")
+      expect(custom_client.base_url).to eq("https://custom.api.url")
       expect(custom_client.timeout).to eq(60)
     end
 
     it "uses configuration defaults" do
-      Envoice.configure do |config|
+      Thelawin.configure do |config|
         config.api_key = "config_api_key"
-        config.api_url = "https://config.api.url"
+        config.environment = :preview
         config.timeout = 45
       end
 
       config_client = described_class.new
       expect(config_client.api_key).to eq("config_api_key")
-      expect(config_client.api_url).to eq("https://config.api.url")
+      expect(config_client.base_url).to eq("https://api.preview.thelawin.dev:3080")
+      expect(config_client.environment).to eq(:preview)
       expect(config_client.timeout).to eq(45)
+    end
+
+    it "accepts environment parameter" do
+      preview_client = described_class.new(api_key: api_key, environment: :preview)
+      expect(preview_client.base_url).to eq("https://api.preview.thelawin.dev:3080")
+      expect(preview_client.environment).to eq(:preview)
+      expect(preview_client).to be_preview
+      expect(preview_client).not_to be_production
+
+      prod_client = described_class.new(api_key: api_key, environment: :production)
+      expect(prod_client.base_url).to eq("https://api.thelawin.dev")
+      expect(prod_client).to be_production
+      expect(prod_client).not_to be_preview
+    end
+
+    it "custom base_url overrides environment" do
+      custom_client = described_class.new(
+        api_key: api_key,
+        environment: :preview,
+        base_url: "http://localhost:8080"
+      )
+      expect(custom_client.base_url).to eq("http://localhost:8080")
+      expect(custom_client.environment).to eq(:preview)
     end
   end
 
   describe "#invoice" do
     it "returns an InvoiceBuilder" do
-      expect(client.invoice).to be_a(Envoice::InvoiceBuilder)
+      expect(client.invoice).to be_a(Thelawin::InvoiceBuilder)
     end
   end
 
   describe "#generate" do
     let(:success_response) do
       {
-        pdf_base64: "JVBERi0xLjQK...",
+        pdfBase64: "JVBERi0xLjQK...",
         filename: "invoice-2026-001.pdf",
-        validation: {
-          status: "valid",
+        format: {
+          formatUsed: "zugferd",
           profile: "EN16931",
-          version: "2.3.2"
+          version: "2.3",
+          formatReason: "eu_internal_trade",
+          warnings: []
         },
         account: {
           remaining: 499,
@@ -69,7 +96,7 @@ RSpec.describe Envoice::Client do
     end
 
     it "returns success on valid request" do
-      stub_request(:post, "https://api.envoice.dev/v1/generate")
+      stub_request(:post, "https://api.thelawin.dev/v1/generate")
         .with(headers: { "X-API-Key" => api_key })
         .to_return(status: 200, body: success_response.to_json, headers: { "Content-Type" => "application/json" })
 
@@ -84,12 +111,13 @@ RSpec.describe Envoice::Client do
       expect(result).to be_success
       expect(result.pdf_base64).to eq("JVBERi0xLjQK...")
       expect(result.filename).to eq("invoice-2026-001.pdf")
-      expect(result.validation.profile).to eq("EN16931")
+      expect(result.format.format_used).to eq("zugferd")
+      expect(result.format.profile).to eq("EN16931")
       expect(result.account.remaining).to eq(499)
     end
 
     it "returns validation errors on 422" do
-      stub_request(:post, "https://api.envoice.dev/v1/generate")
+      stub_request(:post, "https://api.thelawin.dev/v1/generate")
         .to_return(
           status: 422,
           body: {
@@ -116,7 +144,7 @@ RSpec.describe Envoice::Client do
     end
 
     it "raises QuotaExceededError on 402" do
-      stub_request(:post, "https://api.envoice.dev/v1/generate")
+      stub_request(:post, "https://api.thelawin.dev/v1/generate")
         .to_return(
           status: 402,
           body: { error: "quota_exceeded", message: "Monthly quota exceeded" }.to_json,
@@ -131,11 +159,11 @@ RSpec.describe Envoice::Client do
               .buyer("Customer AG")
               .add_item("Consulting", quantity: 8, unit_price: 150.0)
               .generate
-      end.to raise_error(Envoice::QuotaExceededError, "Monthly quota exceeded")
+      end.to raise_error(Thelawin::QuotaExceededError, "Monthly quota exceeded")
     end
 
     it "raises ApiError on other HTTP errors" do
-      stub_request(:post, "https://api.envoice.dev/v1/generate")
+      stub_request(:post, "https://api.thelawin.dev/v1/generate")
         .to_return(
           status: 500,
           body: { error: "internal_error", message: "Internal server error" }.to_json,
@@ -150,7 +178,7 @@ RSpec.describe Envoice::Client do
               .buyer("Customer AG")
               .add_item("Consulting", quantity: 8, unit_price: 150.0)
               .generate
-      end.to raise_error(Envoice::ApiError) do |error|
+      end.to raise_error(Thelawin::ApiError) do |error|
         expect(error.status_code).to eq(500)
         expect(error.code).to eq("internal_error")
       end
@@ -168,26 +196,33 @@ RSpec.describe Envoice::Client do
     end
   end
 
-  describe "#validate" do
-    it "returns validation result" do
-      stub_request(:post, "https://api.envoice.dev/v1/validate")
-        .with(body: { pdf_base64: "JVBERi0xLjQK..." }.to_json)
+  describe "#validate (pre-validation)" do
+    it "returns dry-run result" do
+      stub_request(:post, "https://api.thelawin.dev/v1/validate")
         .to_return(
           status: 200,
-          body: { valid: true, profile: "EN16931", version: "2.3.2" }.to_json,
+          body: {
+            valid: true,
+            format: {
+              formatUsed: "zugferd",
+              profile: "EN16931",
+              version: "2.3"
+            },
+            errors: []
+          }.to_json,
           headers: { "Content-Type" => "application/json" }
         )
 
-      result = client.validate("JVBERi0xLjQK...")
+      result = client.validate({ invoice: { number: "2026-001" } })
 
-      expect(result["valid"]).to be true
-      expect(result["profile"]).to eq("EN16931")
+      expect(result).to be_valid
+      expect(result.format.format_used).to eq("zugferd")
     end
   end
 
   describe "#account" do
     it "returns account info" do
-      stub_request(:get, "https://api.envoice.dev/v1/account")
+      stub_request(:get, "https://api.thelawin.dev/v1/account")
         .to_return(
           status: 200,
           body: { plan: "starter", remaining: 450, used: 50, limit: 500 }.to_json,

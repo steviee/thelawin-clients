@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module Envoice
-  # Base error class for all envoice SDK errors
+module Thelawin
+  # Base error class for all Thelawin SDK errors
   class Error < StandardError; end
 
   # Error raised when the API returns validation errors

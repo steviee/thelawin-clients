@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "bundler/setup"
-require "envoice"
+require "thelawin"
 require "webmock/rspec"
 
 RSpec.configure do |config|
@@ -21,7 +21,8 @@ RSpec.configure do |config|
   config.order = :random
 
   config.before(:each) do
-    Envoice.reset_configuration!
+    Thelawin.reset_configuration!
+    Thelawin.reset_client!
   end
 end
 

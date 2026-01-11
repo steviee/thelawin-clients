@@ -4,8 +4,8 @@ require "spec_helper"
 require "tempfile"
 require "fileutils"
 
-RSpec.describe Envoice::InvoiceBuilder do
-  let(:client) { Envoice::Client.new(api_key: "env_sandbox_test") }
+RSpec.describe Thelawin::InvoiceBuilder do
+  let(:client) { Thelawin::Client.new(api_key: "env_sandbox_test") }
   let(:builder) { client.invoice }
 
   describe "fluent interface" do
@@ -18,6 +18,23 @@ RSpec.describe Envoice::InvoiceBuilder do
       expect(builder.locale("de")).to be(builder)
       expect(builder.footer_text("Thanks!")).to be(builder)
       expect(builder.accent_color("#8b5cf6")).to be(builder)
+      expect(builder.format("zugferd")).to be(builder)
+      expect(builder.profile("en16931")).to be(builder)
+      expect(builder.notes("Test notes")).to be(builder)
+    end
+  end
+
+  describe "format-specific methods" do
+    it "supports leitweg_id for XRechnung" do
+      expect(builder.leitweg_id("04011000-12345-67")).to be(builder)
+    end
+
+    it "supports buyer_reference for Peppol" do
+      expect(builder.buyer_reference("PO-12345")).to be(builder)
+    end
+
+    it "supports tipo_documento for FatturaPA" do
+      expect(builder.tipo_documento("TD01")).to be(builder)
     end
   end
 
@@ -43,14 +60,46 @@ RSpec.describe Envoice::InvoiceBuilder do
     end
 
     it "accepts Party object" do
-      party = Envoice::Party.new(name: "Acme GmbH", city: "Berlin")
+      party = Thelawin::Party.new(name: "Acme GmbH", city: "Berlin")
       builder.seller(party)
+    end
+
+    it "accepts keyword arguments only" do
+      result = builder.seller(name: "Acme GmbH", city: "Berlin", country: "DE")
+      expect(result).to be(builder)
+    end
+
+    it "supports Peppol fields" do
+      result = builder.seller("Acme Ltd",
+                              vat_id: "GB123456789",
+                              peppol_id: "0088:1234567890123",
+                              city: "London",
+                              country: "GB")
+      expect(result).to be(builder)
+    end
+
+    it "supports FatturaPA fields" do
+      result = builder.seller("Acme S.r.l.",
+                              vat_id: "IT12345678901",
+                              codice_fiscale: "12345678901",
+                              city: "Milano",
+                              country: "IT")
+      expect(result).to be(builder)
     end
   end
 
   describe "#buyer" do
     it "accepts name with keyword arguments" do
       result = builder.buyer("Customer AG", city: "München", country: "DE")
+      expect(result).to be(builder)
+    end
+
+    it "supports FatturaPA fields" do
+      result = builder.buyer("Cliente S.p.A.",
+                             codice_destinatario: "ABCDEFG",
+                             pec: "cliente@pec.it",
+                             city: "Roma",
+                             country: "IT")
       expect(result).to be(builder)
     end
   end
@@ -62,8 +111,12 @@ RSpec.describe Envoice::InvoiceBuilder do
     end
 
     it "accepts LineItem object" do
-      item = Envoice::LineItem.new(description: "Item", quantity: 1, unit_price: 100.0)
+      item = Thelawin::LineItem.new(description: "Item", quantity: 1, unit_price: 100.0)
       builder.add_item(item)
+    end
+
+    it "supports FatturaPA natura field" do
+      builder.add_item("Exempt Service", quantity: 1, unit_price: 100.0, vat_rate: 0, natura: "N2.2")
     end
   end
 
@@ -96,22 +149,52 @@ RSpec.describe Envoice::InvoiceBuilder do
   end
 end
 
-RSpec.describe Envoice::InvoiceSuccess do
+RSpec.describe Thelawin::InvoiceSuccess do
+  let(:format_info) do
+    Thelawin::FormatInfo.new(
+      "formatUsed" => "zugferd",
+      "profile" => "EN16931",
+      "version" => "2.3",
+      "formatReason" => "eu_internal_trade",
+      "warnings" => []
+    )
+  end
+
   let(:success) do
     described_class.new(
       pdf_base64: "JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2c+PgplbmRvYmoKdHJhaWxlcgo8PC9Sb290IDEgMCBSPj4KJSVFT0YK",
       filename: "invoice-2026-001.pdf",
-      validation: Envoice::ValidationResult.new(
-        "status" => "valid",
-        "profile" => "EN16931",
-        "version" => "2.3.2"
-      )
+      format: format_info
     )
   end
 
   describe "#success?" do
     it "returns true" do
       expect(success).to be_success
+    end
+  end
+
+  describe "#format" do
+    it "returns FormatInfo" do
+      expect(success.format).to be_a(Thelawin::FormatInfo)
+      expect(success.format.format_used).to eq("zugferd")
+      expect(success.format.profile).to eq("EN16931")
+    end
+  end
+
+  describe "#xml_only?" do
+    it "returns false for PDF formats" do
+      expect(success.xml_only?).to be false
+    end
+
+    it "returns true for XML-only formats" do
+      xml_format = Thelawin::FormatInfo.new("formatUsed" => "fatturapa")
+      xml_success = described_class.new(
+        pdf_base64: "PHhtbD4...",
+        filename: "fattura.xml",
+        format: xml_format
+      )
+      expect(xml_success.xml_only?).to be true
     end
   end
 
@@ -123,13 +206,23 @@ RSpec.describe Envoice::InvoiceSuccess do
   end
 
   describe "#to_data_url" do
-    it "returns a data URL" do
+    it "returns a PDF data URL for PDF formats" do
       data_url = success.to_data_url
       expect(data_url).to start_with("data:application/pdf;base64,")
     end
+
+    it "returns an XML data URL for XML-only formats" do
+      xml_format = Thelawin::FormatInfo.new("formatUsed" => "peppol")
+      xml_success = described_class.new(
+        pdf_base64: "PHhtbD4...",
+        filename: "invoice.xml",
+        format: xml_format
+      )
+      expect(xml_success.to_data_url).to start_with("data:application/xml;base64,")
+    end
   end
 
-  describe "#save_pdf" do
+  describe "#save / #save_pdf" do
     it "saves PDF to file" do
       Dir.mktmpdir do |dir|
         file_path = File.join(dir, "subdir", "invoice.pdf")
@@ -143,7 +236,7 @@ RSpec.describe Envoice::InvoiceSuccess do
   end
 end
 
-RSpec.describe Envoice::InvoiceFailure do
+RSpec.describe Thelawin::InvoiceFailure do
   describe "#success?" do
     it "returns false" do
       failure = described_class.new(errors: [
@@ -151,6 +244,68 @@ RSpec.describe Envoice::InvoiceFailure do
                                     ])
       expect(failure).not_to be_success
       expect(failure.errors.length).to eq(1)
+    end
+  end
+end
+
+RSpec.describe Thelawin::FormatInfo do
+  describe "#pdf_with_xml?" do
+    it "returns true for ZUGFeRD" do
+      format = described_class.new("formatUsed" => "zugferd")
+      expect(format.pdf_with_xml?).to be true
+    end
+
+    it "returns true for Factur-X" do
+      format = described_class.new("formatUsed" => "facturx")
+      expect(format.pdf_with_xml?).to be true
+    end
+
+    it "returns false for UBL" do
+      format = described_class.new("formatUsed" => "ubl")
+      expect(format.pdf_with_xml?).to be false
+    end
+  end
+
+  describe "#xml_only?" do
+    it "returns true for UBL" do
+      format = described_class.new("formatUsed" => "ubl")
+      expect(format.xml_only?).to be true
+    end
+
+    it "returns true for FatturaPA" do
+      format = described_class.new("formatUsed" => "fatturapa")
+      expect(format.xml_only?).to be true
+    end
+
+    it "returns false for ZUGFeRD" do
+      format = described_class.new("formatUsed" => "zugferd")
+      expect(format.xml_only?).to be false
+    end
+  end
+
+  describe "#plain_pdf?" do
+    it "returns true for PDF format" do
+      format = described_class.new("formatUsed" => "pdf")
+      expect(format.plain_pdf?).to be true
+    end
+
+    it "returns false for ZUGFeRD" do
+      format = described_class.new("formatUsed" => "zugferd")
+      expect(format.plain_pdf?).to be false
+    end
+  end
+
+  describe "#warnings" do
+    it "parses legal warnings" do
+      format = described_class.new(
+        "formatUsed" => "fatturapa",
+        "warnings" => [
+          { "code" => "IT_SDI_REQUIRED", "message" => "SDI submission required", "legalBasis" => "D.Lgs. 127/2015" }
+        ]
+      )
+      expect(format.warnings.length).to eq(1)
+      expect(format.warnings[0]).to be_a(Thelawin::LegalWarning)
+      expect(format.warnings[0].code).to eq("IT_SDI_REQUIRED")
     end
   end
 end

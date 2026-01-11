@@ -3,15 +3,15 @@
 require "base64"
 require "date"
 
-module Envoice
+module Thelawin
   # Result object returned after successful invoice generation
   class InvoiceSuccess
-    attr_reader :pdf_base64, :filename, :validation, :account
+    attr_reader :pdf_base64, :filename, :format, :account
 
-    def initialize(pdf_base64:, filename:, validation:, account: nil)
+    def initialize(pdf_base64:, filename:, format:, account: nil)
       @pdf_base64 = pdf_base64
       @filename = filename
-      @validation = validation
+      @format = format
       @account = account
     end
 
@@ -20,24 +20,39 @@ module Envoice
       true
     end
 
-    # Save the PDF to a file
-    # @param file_path [String] Path to save the PDF
-    def save_pdf(file_path)
+    # Save the output to a file (PDF or XML depending on format)
+    # @param file_path [String] Path to save the file
+    def save(file_path)
       dir = File.dirname(file_path)
       FileUtils.mkdir_p(dir) unless File.directory?(dir)
       File.binwrite(file_path, to_bytes)
     end
 
-    # Get the PDF as bytes
-    # @return [String] Binary PDF data
+    # Alias for backwards compatibility
+    alias save_pdf save
+
+    # Get the output as bytes
+    # @return [String] Binary data (PDF or XML)
     def to_bytes
       Base64.decode64(@pdf_base64)
     end
 
-    # Get the PDF as a data URL
+    # Get the output as a data URL
     # @return [String] Data URL
     def to_data_url
-      "data:application/pdf;base64,#{@pdf_base64}"
+      mime_type = @format.xml_only? ? "application/xml" : "application/pdf"
+      "data:#{mime_type};base64,#{@pdf_base64}"
+    end
+
+    # Check if the output is XML-only (no visual PDF)
+    def xml_only?
+      @format.xml_only?
+    end
+
+    # Get legal warnings from format detection
+    # @return [Array<LegalWarning>]
+    def warnings
+      @format.warnings
     end
   end
 
@@ -59,6 +74,8 @@ module Envoice
   class InvoiceBuilder
     def initialize(client)
       @client = client
+      @format = "auto"
+      @profile = "en16931"
       @number = nil
       @date = nil
       @due_date = nil
@@ -67,9 +84,29 @@ module Envoice
       @items = []
       @payment = nil
       @currency = "EUR"
+      @notes = nil
+      @leitweg_id = nil
+      @buyer_reference = nil
+      @tipo_documento = nil
       @template = "minimal"
       @locale = "en"
       @customization = Customization.new
+    end
+
+    # Set the output format
+    # @param value [String] "auto", "zugferd", "facturx", "xrechnung", "pdf", "ubl", "cii", "peppol", "fatturapa"
+    # @return [self]
+    def format(value)
+      @format = value
+      self
+    end
+
+    # Set the profile (for ZUGFeRD/Factur-X formats)
+    # @param value [String] "minimum", "basic_wl", "basic", "en16931", "extended"
+    # @return [self]
+    def profile(value)
+      @profile = value
+      self
     end
 
     # Set the invoice number
@@ -97,40 +134,46 @@ module Envoice
     end
 
     # Set the seller information
-    # @param name [String]
-    # @param opts [Hash] Optional attributes
+    # @param name_or_party [String, Party] Name or Party object
+    # @param opts [Hash] Optional attributes (when name is a String)
     # @return [self]
-    def seller(name = nil, **opts)
-      if name.is_a?(Party)
-        @seller = name
+    def seller(name_or_party = nil, **opts)
+      if name_or_party.is_a?(Party)
+        @seller = name_or_party
+      elsif name_or_party.nil? && opts.any?
+        @seller = Party.new(**opts)
       else
-        @seller = Party.new(name: name, **opts)
+        @seller = Party.new(name: name_or_party, **opts)
       end
       self
     end
 
     # Set the buyer information
-    # @param name [String]
-    # @param opts [Hash] Optional attributes
+    # @param name_or_party [String, Party] Name or Party object
+    # @param opts [Hash] Optional attributes (when name is a String)
     # @return [self]
-    def buyer(name = nil, **opts)
-      if name.is_a?(Party)
-        @buyer = name
+    def buyer(name_or_party = nil, **opts)
+      if name_or_party.is_a?(Party)
+        @buyer = name_or_party
+      elsif name_or_party.nil? && opts.any?
+        @buyer = Party.new(**opts)
       else
-        @buyer = Party.new(name: name, **opts)
+        @buyer = Party.new(name: name_or_party, **opts)
       end
       self
     end
 
     # Add a line item
-    # @param description [String]
+    # @param description [String, LineItem] Description or LineItem object
     # @param quantity [Numeric]
     # @param unit_price [Numeric]
-    # @param opts [Hash] Optional attributes (unit, vat_rate)
+    # @param opts [Hash] Optional attributes (unit, vat_rate, natura)
     # @return [self]
     def add_item(description = nil, quantity: nil, unit_price: nil, **opts)
       if description.is_a?(LineItem)
         @items << description
+      elsif description.nil? && opts.any?
+        @items << LineItem.new(**opts)
       else
         @items << LineItem.new(description: description, quantity: quantity, unit_price: unit_price, **opts)
       end
@@ -138,7 +181,7 @@ module Envoice
     end
 
     # Set multiple line items at once
-    # @param items [Array<LineItem>]
+    # @param items [Array<LineItem, Hash>]
     # @return [self]
     def items(items)
       @items = items.map do |item|
@@ -160,6 +203,38 @@ module Envoice
     # @return [self]
     def currency(value)
       @currency = value
+      self
+    end
+
+    # Set invoice notes/comments
+    # @param value [String]
+    # @return [self]
+    def notes(value)
+      @notes = value
+      self
+    end
+
+    # Set Leitweg-ID for XRechnung (German B2G)
+    # @param value [String] e.g., "04011000-12345-67"
+    # @return [self]
+    def leitweg_id(value)
+      @leitweg_id = value
+      self
+    end
+
+    # Set buyer reference for Peppol
+    # @param value [String] Purchase order reference
+    # @return [self]
+    def buyer_reference(value)
+      @buyer_reference = value
+      self
+    end
+
+    # Set document type for FatturaPA
+    # @param value [String] "TD01" (invoice), "TD04" (credit note), etc.
+    # @return [self]
+    def tipo_documento(value)
+      @tipo_documento = value
       self
     end
 
@@ -226,6 +301,16 @@ module Envoice
       @client.send(:generate_invoice_internal, request)
     end
 
+    # Validate without generating (dry-run)
+    # @return [DryRunResult]
+    def validate
+      errors = validate_required_fields
+      return InvoiceFailure.new(errors: errors) unless errors.empty?
+
+      request = build_request
+      @client.send(:validate_invoice_internal, request)
+    end
+
     private
 
     def validate_required_fields
@@ -239,19 +324,27 @@ module Envoice
     end
 
     def build_request
+      invoice_data = {
+        number: @number,
+        date: @date,
+        dueDate: @due_date,
+        seller: @seller.to_h,
+        buyer: @buyer.to_h,
+        items: @items.map(&:to_h),
+        payment: @payment&.to_h,
+        currency: @currency,
+        notes: @notes,
+        leitwegId: @leitweg_id,
+        buyerReference: @buyer_reference,
+        tipoDocumento: @tipo_documento
+      }.compact
+
       {
+        format: @format,
+        profile: @profile,
         template: @template,
         locale: @locale,
-        invoice: {
-          number: @number,
-          date: @date,
-          dueDate: @due_date,
-          seller: @seller.to_h,
-          buyer: @buyer.to_h,
-          items: @items.map(&:to_h),
-          payment: @payment&.to_h,
-          currency: @currency
-        }.compact,
+        invoice: invoice_data,
         customization: @customization.empty? ? nil : @customization.to_h
       }.compact
     end
