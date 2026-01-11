@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*", "README.md", "LICENSE"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "base64", ">= 0.1"  # Required for Ruby 3.4+
+  spec.add_dependency "base64", "~> 0.2"  # Required for Ruby 3.4+
   spec.add_dependency "faraday", "~> 2.0"
   spec.add_dependency "faraday-retry", "~> 2.0"
 
