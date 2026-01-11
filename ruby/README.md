@@ -4,16 +4,22 @@ Official Ruby SDK for [thelawin.dev](https://thelawin.dev) - Generate ZUGFeRD/Fa
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add to your Gemfile:
 
 ```ruby
-gem 'thelawin', git: 'https://github.com/steviee/thelawin-clients.git', glob: 'ruby/*.gemspec'
+gem 'thelawin', '~> 0.2'
 ```
 
-And then execute:
+Then:
 
 ```bash
 bundle install
+```
+
+Or install directly:
+
+```bash
+gem install thelawin
 ```
 
 ## Quick Start
