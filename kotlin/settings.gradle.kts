@@ -1,1 +1,1 @@
-rootProject.name = "envoice-sdk"
+rootProject.name = "thelawin-sdk"

@@ -208,4 +208,48 @@ module Thelawin
       @warning = data["warning"]
     end
   end
+
+  # Detected format from retrieve endpoint
+  class DetectedFormat
+    attr_reader :detected_format, :profile, :version, :xml_type, :has_pdf
+
+    def initialize(data)
+      @detected_format = data["detected_format"]
+      @profile = data["profile"]
+      @version = data["version"]
+      @xml_type = data["xml_type"]
+      @has_pdf = data["has_pdf"] || false
+    end
+  end
+
+  # Error from retrieve endpoint
+  class RetrieveError
+    attr_reader :code, :message, :path, :severity
+
+    def initialize(data)
+      @code = data["code"]
+      @message = data["message"]
+      @path = data["path"]
+      @severity = data["severity"] || "error"
+    end
+  end
+
+  # Result from /v1/retrieve (extract invoice data from PDF/XML)
+  class RetrieveResult
+    attr_reader :valid, :format, :invoice, :source_xml_base64, :transaction_id, :errors, :warnings
+
+    def initialize(data)
+      @valid = data["valid"]
+      @format = DetectedFormat.new(data["format"]) if data["format"]
+      @invoice = data["invoice"]
+      @source_xml_base64 = data["source_xml_base64"]
+      @transaction_id = data["transaction_id"]
+      @errors = (data["errors"] || []).map { |e| RetrieveError.new(e) }
+      @warnings = (data["warnings"] || []).map { |w| RetrieveError.new(w) }
+    end
+
+    def valid?
+      @valid
+    end
+  end
 end

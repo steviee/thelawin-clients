@@ -1,9 +1,9 @@
-namespace Envoice;
+namespace Thelawin;
 
 /// <summary>Fluent builder for creating invoices</summary>
 public class InvoiceBuilder
 {
-    private readonly EnvoiceClient _client;
+    private readonly ThelawinClient _client;
     private string? _number;
     private string? _date;
     private string? _dueDate;
@@ -14,12 +14,18 @@ public class InvoiceBuilder
     private string _currency = "EUR";
     private string _template = "minimal";
     private string _locale = "en";
+    private InvoiceFormat? _format;
+    private InvoiceProfile? _profile;
+    private string? _notes;
+    private string? _leitwegId;
+    private string? _buyerReference;
+    private string? _tipoDocumento;
     private string? _logoBase64;
     private int? _logoWidthMm;
     private string? _footerText;
     private string? _accentColor;
 
-    internal InvoiceBuilder(EnvoiceClient client) => _client = client;
+    internal InvoiceBuilder(ThelawinClient client) => _client = client;
 
     /// <summary>Set the invoice number</summary>
     public InvoiceBuilder Number(string value) { _number = value; return this; }
@@ -86,6 +92,24 @@ public class InvoiceBuilder
     /// <summary>Set the locale</summary>
     public InvoiceBuilder Locale(string value) { _locale = value; return this; }
 
+    /// <summary>Set the output format (zugferd, facturx, xrechnung, peppol, fatturapa, etc.)</summary>
+    public InvoiceBuilder Format(InvoiceFormat value) { _format = value; return this; }
+
+    /// <summary>Set the conformance profile (minimum, basic, en16931, extended, xrechnung)</summary>
+    public InvoiceBuilder Profile(InvoiceProfile value) { _profile = value; return this; }
+
+    /// <summary>Set invoice notes / remarks</summary>
+    public InvoiceBuilder Notes(string value) { _notes = value; return this; }
+
+    /// <summary>Set the Leitweg-ID (required for German XRechnung B2G)</summary>
+    public InvoiceBuilder LeitwegId(string value) { _leitwegId = value; return this; }
+
+    /// <summary>Set the buyer reference (BT-10, used in Peppol/XRechnung)</summary>
+    public InvoiceBuilder BuyerReference(string value) { _buyerReference = value; return this; }
+
+    /// <summary>Set the tipo documento (required for FatturaPA, e.g. TD01)</summary>
+    public InvoiceBuilder TipoDocumento(string value) { _tipoDocumento = value; return this; }
+
     /// <summary>Set logo from file</summary>
     public async Task<InvoiceBuilder> LogoFileAsync(string path, int? widthMm = null)
     {
@@ -131,9 +155,15 @@ public class InvoiceBuilder
                 Buyer: _buyer!,
                 Items: _items.ToList(),
                 Payment: _payment,
-                Currency: _currency
+                Currency: _currency,
+                Notes: _notes,
+                LeitwegId: _leitwegId,
+                BuyerReference: _buyerReference,
+                TipoDocumento: _tipoDocumento
             ),
-            Customization: hasCustomization ? new Customization(_logoBase64, _logoWidthMm, _footerText, _accentColor) : null
+            Customization: hasCustomization ? new Customization(_logoBase64, _logoWidthMm, _footerText, _accentColor) : null,
+            Format: _format,
+            Profile: _profile
         );
 
         return await _client.GenerateInvoiceAsync(request, cancellationToken);
@@ -156,6 +186,8 @@ public class PartyBuilder
 {
     private string _name = "";
     private string? _street, _city, _postalCode, _country, _vatId, _email, _phone;
+    private string? _endpointId, _endpointScheme;
+    private string? _codiceFiscale, _codiceDestinatario, _pecEmail;
 
     public PartyBuilder Name(string value) { _name = value; return this; }
     public PartyBuilder Street(string value) { _street = value; return this; }
@@ -166,7 +198,26 @@ public class PartyBuilder
     public PartyBuilder Email(string value) { _email = value; return this; }
     public PartyBuilder Phone(string value) { _phone = value; return this; }
 
-    public Party Build() => new(_name, _street, _city, _postalCode, _country, _vatId, _email, _phone);
+    /// <summary>Set Peppol endpoint ID (e.g. GLN or DUNS number)</summary>
+    public PartyBuilder EndpointId(string value) { _endpointId = value; return this; }
+
+    /// <summary>Set Peppol endpoint scheme (e.g. "0088" for GLN, "0060" for DUNS)</summary>
+    public PartyBuilder EndpointScheme(string value) { _endpointScheme = value; return this; }
+
+    /// <summary>Set Italian codice fiscale (tax code)</summary>
+    public PartyBuilder CodiceFiscale(string value) { _codiceFiscale = value; return this; }
+
+    /// <summary>Set Italian codice destinatario (SDI recipient code)</summary>
+    public PartyBuilder CodiceDestinatario(string value) { _codiceDestinatario = value; return this; }
+
+    /// <summary>Set Italian PEC email address</summary>
+    public PartyBuilder PecEmail(string value) { _pecEmail = value; return this; }
+
+    public Party Build() => new(
+        _name, _street, _city, _postalCode, _country, _vatId, _email, _phone,
+        _endpointId, _endpointScheme,
+        _codiceFiscale, _codiceDestinatario, _pecEmail
+    );
 }
 
 /// <summary>Builder for LineItem</summary>
@@ -177,6 +228,7 @@ public class LineItemBuilder
     private string _unit = "C62";
     private double _unitPrice;
     private double _vatRate = 19.0;
+    private string? _natura;
 
     public LineItemBuilder Description(string value) { _description = value; return this; }
     public LineItemBuilder Quantity(double value) { _quantity = value; return this; }
@@ -184,5 +236,8 @@ public class LineItemBuilder
     public LineItemBuilder UnitPrice(double value) { _unitPrice = value; return this; }
     public LineItemBuilder VatRate(double value) { _vatRate = value; return this; }
 
-    public LineItem Build() => new(_description, _quantity, _unit, _unitPrice, _vatRate);
+    /// <summary>Set the natura (Italian VAT exemption code, e.g. N2.2)</summary>
+    public LineItemBuilder Natura(string value) { _natura = value; return this; }
+
+    public LineItem Build() => new(_description, _quantity, _unit, _unitPrice, _vatRate, _natura);
 }

@@ -6,8 +6,8 @@ plugins {
     signing
 }
 
-group = "dev.envoice"
-version = "0.1.0"
+group = "dev.thelawin"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -44,9 +44,9 @@ publishing {
         create<MavenPublication>("maven") {
             from(components["java"])
             pom {
-                name.set("envoice")
-                description.set("Official Kotlin SDK for envoice.dev - Generate ZUGFeRD/Factur-X invoices")
-                url.set("https://envoice.dev")
+                name.set("thelawin")
+                description.set("Official Kotlin SDK for thelawin.dev - Developer-First ZUGFeRD/Factur-X E-Invoicing API")
+                url.set("https://thelawin.dev")
                 licenses {
                     license {
                         name.set("MIT License")
@@ -55,15 +55,15 @@ publishing {
                 }
                 developers {
                     developer {
-                        id.set("envoice")
-                        name.set("envoice.dev")
-                        email.set("support@envoice.dev")
+                        id.set("thelawin")
+                        name.set("thelawin.dev")
+                        email.set("support@thelawin.dev")
                     }
                 }
                 scm {
-                    connection.set("scm:git:git://github.com/steviee/envoice-clients.git")
-                    developerConnection.set("scm:git:ssh://github.com:steviee/envoice-clients.git")
-                    url.set("https://github.com/steviee/envoice-clients")
+                    connection.set("scm:git:git://github.com/steviee/thelawin-clients.git")
+                    developerConnection.set("scm:git:ssh://github.com:steviee/thelawin-clients.git")
+                    url.set("https://github.com/steviee/thelawin-clients")
                 }
             }
         }

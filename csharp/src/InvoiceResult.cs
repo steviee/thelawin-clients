@@ -1,4 +1,4 @@
-namespace Envoice;
+namespace Thelawin;
 
 /// <summary>Result of an invoice generation</summary>
 public abstract record InvoiceResult

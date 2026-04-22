@@ -1,1 +1,1 @@
-"""Tests for the envoice SDK."""
+"""Tests for the thelawin SDK."""

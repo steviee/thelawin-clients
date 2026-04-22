@@ -6,36 +6,34 @@ import type {
   InvoiceData,
   GenerateRequest,
   InvoiceResult,
-  ValidationResult,
+  FormatInfo,
   AccountInfo,
+  InvoiceFormat,
+  InvoiceProfile,
+  InvoiceTemplate,
+  InvoiceLocale,
 } from './types';
-import type { EnvoiceClient } from './client';
+import type { ThelawinClient } from './client';
 
-/**
- * Result object returned after successful invoice generation
- */
 export class InvoiceSuccess {
   public readonly success = true as const;
   public readonly pdfBase64: string;
   public readonly filename: string;
-  public readonly validation: ValidationResult;
+  public readonly format: FormatInfo;
   public readonly account?: AccountInfo;
 
   constructor(
     pdfBase64: string,
     filename: string,
-    validation: ValidationResult,
+    format: FormatInfo,
     account?: AccountInfo
   ) {
     this.pdfBase64 = pdfBase64;
     this.filename = filename;
-    this.validation = validation;
+    this.format = format;
     this.account = account;
   }
 
-  /**
-   * Download the PDF (browser only)
-   */
   downloadPdf(customFilename?: string): void {
     if (typeof window === 'undefined') {
       throw new Error('downloadPdf() is only available in browser environments');
@@ -49,9 +47,6 @@ export class InvoiceSuccess {
     document.body.removeChild(link);
   }
 
-  /**
-   * Open PDF in a new browser tab (browser only)
-   */
   openInNewTab(): void {
     if (typeof window === 'undefined') {
       throw new Error('openInNewTab() is only available in browser environments');
@@ -62,9 +57,6 @@ export class InvoiceSuccess {
     window.open(url, '_blank');
   }
 
-  /**
-   * Convert to Blob (browser only)
-   */
   toBlob(): Blob {
     const bytes = atob(this.pdfBase64);
     const buffer = new Uint8Array(bytes.length);
@@ -74,9 +66,6 @@ export class InvoiceSuccess {
     return new Blob([buffer], { type: 'application/pdf' });
   }
 
-  /**
-   * Get the PDF as a Uint8Array
-   */
   toUint8Array(): Uint8Array {
     const bytes = atob(this.pdfBase64);
     const buffer = new Uint8Array(bytes.length);
@@ -86,83 +75,51 @@ export class InvoiceSuccess {
     return buffer;
   }
 
-  /**
-   * Get the PDF as a data URL
-   */
   toDataUrl(): string {
     return `data:application/pdf;base64,${this.pdfBase64}`;
   }
 }
 
-/**
- * Fluent builder for creating invoices
- */
 export class InvoiceBuilder {
-  private client: EnvoiceClient;
+  private client: ThelawinClient;
   private data: Partial<InvoiceData> = {};
-  private template: GenerateRequest['template'] = 'minimal';
-  private locale = 'en';
+  private _format: InvoiceFormat = 'auto';
+  private _profile: InvoiceProfile = 'en16931';
+  private _template: InvoiceTemplate = 'minimal';
+  private _locale: string = 'en';
   private customization: Customization = {};
 
-  constructor(client: EnvoiceClient) {
+  constructor(client: ThelawinClient) {
     this.client = client;
   }
 
-  /**
-   * Set the invoice number
-   */
   number(value: string): this {
     this.data.number = value;
     return this;
   }
 
-  /**
-   * Set the invoice date (ISO format: YYYY-MM-DD)
-   */
   date(value: string | Date): this {
-    if (value instanceof Date) {
-      this.data.date = value.toISOString().split('T')[0];
-    } else {
-      this.data.date = value;
-    }
+    this.data.date = value instanceof Date ? value.toISOString().split('T')[0] : value;
     return this;
   }
 
-  /**
-   * Set the due date (ISO format: YYYY-MM-DD)
-   */
   dueDate(value: string | Date): this {
-    if (value instanceof Date) {
-      this.data.dueDate = value.toISOString().split('T')[0];
-    } else {
-      this.data.dueDate = value;
-    }
+    this.data.dueDate = value instanceof Date ? value.toISOString().split('T')[0] : value;
     return this;
   }
 
-  /**
-   * Set the seller information
-   */
   seller(party: Party): this {
     this.data.seller = party;
     return this;
   }
 
-  /**
-   * Set the buyer information
-   */
   buyer(party: Party): this {
     this.data.buyer = party;
     return this;
   }
 
-  /**
-   * Add a line item to the invoice
-   */
   addItem(item: LineItem): this {
-    if (!this.data.items) {
-      this.data.items = [];
-    }
+    if (!this.data.items) this.data.items = [];
     this.data.items.push({
       ...item,
       unit: item.unit || 'C62',
@@ -171,9 +128,6 @@ export class InvoiceBuilder {
     return this;
   }
 
-  /**
-   * Set multiple line items at once
-   */
   items(items: LineItem[]): this {
     this.data.items = items.map(item => ({
       ...item,
@@ -183,46 +137,56 @@ export class InvoiceBuilder {
     return this;
   }
 
-  /**
-   * Set payment information
-   */
   payment(info: PaymentInfo): this {
     this.data.payment = info;
     return this;
   }
 
-  /**
-   * Set the currency (default: EUR)
-   */
   currency(value: string): this {
     this.data.currency = value;
     return this;
   }
 
-  /**
-   * Set the template (minimal, classic, compact)
-   */
-  templateType(value: GenerateRequest['template']): this {
-    this.template = value;
+  notes(value: string): this {
+    this.data.notes = value;
     return this;
   }
 
-  // Alias for templateType
-  template(value: GenerateRequest['template']): this {
-    return this.templateType(value);
-  }
-
-  /**
-   * Set the locale for labels (de, en, fr, es, it)
-   */
-  localeCode(value: string): this {
-    this.locale = value;
+  format(value: InvoiceFormat): this {
+    this._format = value;
     return this;
   }
 
-  /**
-   * Set a logo from a URL (browser: fetches and encodes)
-   */
+  profile(value: InvoiceProfile): this {
+    this._profile = value;
+    return this;
+  }
+
+  template(value: InvoiceTemplate): this {
+    this._template = value;
+    return this;
+  }
+
+  locale(value: InvoiceLocale | string): this {
+    this._locale = value;
+    return this;
+  }
+
+  leitwegId(value: string): this {
+    this.data.leitwegId = value;
+    return this;
+  }
+
+  buyerReference(value: string): this {
+    this.data.buyerReference = value;
+    return this;
+  }
+
+  tipoDocumento(value: string): this {
+    this.data.tipoDocumento = value;
+    return this;
+  }
+
   async logoFromUrl(url: string, widthMm?: number): Promise<this> {
     const response = await fetch(url);
     const blob = await response.blob();
@@ -232,18 +196,12 @@ export class InvoiceBuilder {
     return this;
   }
 
-  /**
-   * Set a logo from Base64 string
-   */
   logoBase64(base64: string, widthMm?: number): this {
     this.customization.logoBase64 = base64;
     if (widthMm) this.customization.logoWidthMm = widthMm;
     return this;
   }
 
-  /**
-   * Set a logo from a Blob or File (browser only)
-   */
   async logoFromBlob(blob: Blob, widthMm?: number): Promise<this> {
     const base64 = await this.blobToBase64(blob);
     this.customization.logoBase64 = base64;
@@ -251,61 +209,38 @@ export class InvoiceBuilder {
     return this;
   }
 
-  /**
-   * Set footer text
-   */
   footerText(text: string): this {
     this.customization.footerText = text;
     return this;
   }
 
-  /**
-   * Set accent color (hex code)
-   */
   accentColor(color: string): this {
     this.customization.accentColor = color;
     return this;
   }
 
-  /**
-   * Generate the invoice
-   */
   async generate(): Promise<InvoiceResult> {
-    // Validate required fields
     if (!this.data.number) {
-      return {
-        success: false,
-        errors: [{ path: '$.invoice.number', code: 'REQUIRED', message: 'Invoice number is required' }],
-      };
+      return { success: false, errors: [{ path: '$.invoice.number', code: 'REQUIRED', message: 'Invoice number is required' }] };
     }
     if (!this.data.date) {
-      return {
-        success: false,
-        errors: [{ path: '$.invoice.date', code: 'REQUIRED', message: 'Invoice date is required' }],
-      };
+      return { success: false, errors: [{ path: '$.invoice.date', code: 'REQUIRED', message: 'Invoice date is required' }] };
     }
     if (!this.data.seller) {
-      return {
-        success: false,
-        errors: [{ path: '$.invoice.seller', code: 'REQUIRED', message: 'Seller information is required' }],
-      };
+      return { success: false, errors: [{ path: '$.invoice.seller', code: 'REQUIRED', message: 'Seller information is required' }] };
     }
     if (!this.data.buyer) {
-      return {
-        success: false,
-        errors: [{ path: '$.invoice.buyer', code: 'REQUIRED', message: 'Buyer information is required' }],
-      };
+      return { success: false, errors: [{ path: '$.invoice.buyer', code: 'REQUIRED', message: 'Buyer information is required' }] };
     }
     if (!this.data.items || this.data.items.length === 0) {
-      return {
-        success: false,
-        errors: [{ path: '$.invoice.items', code: 'REQUIRED', message: 'At least one line item is required' }],
-      };
+      return { success: false, errors: [{ path: '$.invoice.items', code: 'REQUIRED', message: 'At least one line item is required' }] };
     }
 
     const request: GenerateRequest = {
-      template: this.template,
-      locale: this.locale,
+      format: this._format,
+      profile: this._profile,
+      template: this._template,
+      locale: this._locale,
       invoice: this.data as InvoiceData,
       customization: Object.keys(this.customization).length > 0 ? this.customization : undefined,
     };
@@ -318,7 +253,6 @@ export class InvoiceBuilder {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data URL prefix if present
         const base64 = result.includes(',') ? result.split(',')[1] : result;
         resolve(base64);
       };

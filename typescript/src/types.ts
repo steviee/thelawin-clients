@@ -1,6 +1,3 @@
-/**
- * Party (seller or buyer) information
- */
 export interface Party {
   name: string;
   street?: string;
@@ -10,22 +7,21 @@ export interface Party {
   vatId?: string;
   email?: string;
   phone?: string;
+  peppolId?: string;
+  codiceFiscale?: string;
+  codiceDestinatario?: string;
+  pec?: string;
 }
 
-/**
- * Line item in an invoice
- */
 export interface LineItem {
   description: string;
   quantity: number;
   unit?: string;
   unitPrice: number;
   vatRate?: number;
+  natura?: string;
 }
 
-/**
- * Payment information
- */
 export interface PaymentInfo {
   iban?: string;
   bic?: string;
@@ -33,9 +29,6 @@ export interface PaymentInfo {
   reference?: string;
 }
 
-/**
- * Customization options for the invoice PDF
- */
 export interface Customization {
   logoBase64?: string;
   logoWidthMm?: number;
@@ -43,9 +36,28 @@ export interface Customization {
   accentColor?: string;
 }
 
-/**
- * Complete invoice data structure
- */
+export type InvoiceFormat =
+  | 'auto'
+  | 'zugferd'
+  | 'facturx'
+  | 'xrechnung'
+  | 'ubl'
+  | 'cii'
+  | 'peppol'
+  | 'fatturapa'
+  | 'pdf';
+
+export type InvoiceProfile =
+  | 'minimum'
+  | 'basic_wl'
+  | 'basic'
+  | 'en16931'
+  | 'extended';
+
+export type InvoiceTemplate = 'minimal' | 'classic' | 'compact';
+
+export type InvoiceLocale = 'de' | 'en' | 'fr' | 'es' | 'it';
+
 export interface InvoiceData {
   number: string;
   date: string;
@@ -55,52 +67,52 @@ export interface InvoiceData {
   items: LineItem[];
   payment?: PaymentInfo;
   currency?: string;
+  notes?: string;
+  leitwegId?: string;
+  buyerReference?: string;
+  tipoDocumento?: string;
 }
 
-/**
- * Request payload for the generate endpoint
- */
 export interface GenerateRequest {
-  template?: 'minimal' | 'classic' | 'compact';
-  locale?: string;
+  format?: InvoiceFormat;
+  profile?: InvoiceProfile;
+  template?: InvoiceTemplate;
+  locale?: InvoiceLocale | string;
   invoice: InvoiceData;
   customization?: Customization;
 }
 
-/**
- * Validation result from the API
- */
-export interface ValidationResult {
-  status: string;
-  profile: string;
-  version: string;
-  warnings?: string[];
+export interface FormatInfo {
+  format_used: string;
+  profile?: string;
+  version?: string;
+  format_reason?: string;
+  warnings?: LegalWarning[];
 }
 
-/**
- * Account information from the API
- */
+export interface LegalWarning {
+  code: string;
+  message: string;
+  legal_basis: string;
+  severity?: 'info' | 'warning';
+}
+
 export interface AccountInfo {
   remaining: number;
   plan: string;
-  overageCount?: number;
-  overageAllowed?: number;
+  overage_count?: number;
+  overage_allowed?: number;
+  topup_balance?: number;
   warning?: string;
 }
 
-/**
- * Successful API response
- */
 export interface GenerateResponse {
   pdf_base64: string;
   filename: string;
-  validation: ValidationResult;
+  format: FormatInfo;
   account?: AccountInfo;
 }
 
-/**
- * Validation error detail
- */
 export interface ValidationError {
   path: string;
   code: string;
@@ -108,18 +120,50 @@ export interface ValidationError {
   severity?: 'error' | 'warning';
 }
 
-/**
- * Error response from the API
- */
 export interface ErrorResponse {
   error: string;
   message?: string;
   details?: ValidationError[];
 }
 
-/**
- * Result of an invoice generation (success or failure)
- */
+export interface DryRunResponse {
+  valid: boolean;
+  format: FormatInfo;
+  errors: string[];
+}
+
+export interface RetrieveRequest {
+  data_base64: string;
+  content_type?: string;
+  include_source_xml?: boolean;
+}
+
+export interface DetectedFormat {
+  detected_format: string;
+  profile?: string;
+  version?: string;
+  xml_type?: string;
+  has_pdf?: boolean;
+}
+
+export interface RetrieveError {
+  code: string;
+  message: string;
+  path?: string;
+  severity?: 'error' | 'warning';
+}
+
+export interface RetrieveResponse {
+  valid: boolean;
+  format: DetectedFormat;
+  invoice?: InvoiceData;
+  source_xml_base64?: string;
+  transaction_id: string;
+  errors: RetrieveError[];
+  warnings: RetrieveError[];
+  locale?: string;
+}
+
 export type InvoiceResult =
-  | { success: true; pdfBase64: string; filename: string; validation: ValidationResult; account?: AccountInfo }
+  | { success: true; pdfBase64: string; filename: string; format: FormatInfo; account?: AccountInfo }
   | { success: false; errors: ValidationError[] };

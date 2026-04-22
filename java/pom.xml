@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>dev.envoice</groupId>
+    <groupId>dev.thelawin</groupId>
     <artifactId>sdk</artifactId>
     <version>0.1.0</version>
     <packaging>jar</packaging>
 
-    <name>envoice</name>
-    <description>Official Java SDK for envoice.dev - Generate ZUGFeRD/Factur-X invoices</description>
-    <url>https://envoice.dev</url>
+    <name>thelawin</name>
+    <description>Official Java SDK for thelawin.dev - Generate ZUGFeRD/Factur-X e-invoices</description>
+    <url>https://thelawin.dev</url>
 
     <licenses>
         <license>
@@ -22,16 +22,16 @@
 
     <developers>
         <developer>
-            <id>envoice</id>
-            <name>envoice.dev</name>
-            <email>support@envoice.dev</email>
+            <id>thelawin</id>
+            <name>thelawin.dev</name>
+            <email>support@thelawin.dev</email>
         </developer>
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/steviee/envoice-clients.git</connection>
-        <developerConnection>scm:git:ssh://github.com:steviee/envoice-clients.git</developerConnection>
-        <url>https://github.com/steviee/envoice-clients</url>
+        <connection>scm:git:git://github.com/steviee/thelawin-clients.git</connection>
+        <developerConnection>scm:git:ssh://github.com:steviee/thelawin-clients.git</developerConnection>
+        <url>https://github.com/steviee/thelawin-clients</url>
     </scm>
 
     <properties>

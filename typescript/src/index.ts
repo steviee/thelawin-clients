@@ -1,27 +1,35 @@
-// Main exports
-export { EnvoiceClient } from './client';
-export type { EnvoiceClientOptions } from './client';
+export { ThelawinClient } from './client';
+export type { ThelawinClientOptions } from './client';
 export { InvoiceBuilder, InvoiceSuccess } from './invoice-builder';
 export {
-  EnvoiceError,
-  EnvoiceApiError,
-  EnvoiceValidationError,
-  EnvoiceNetworkError,
-  EnvoiceQuotaExceededError,
+  ThelawinError,
+  ThelawinApiError,
+  ThelawinValidationError,
+  ThelawinNetworkError,
+  ThelawinQuotaExceededError,
 } from './errors';
 
-// Type exports
 export type {
   Party,
   LineItem,
   PaymentInfo,
   Customization,
   InvoiceData,
+  InvoiceFormat,
+  InvoiceProfile,
+  InvoiceTemplate,
+  InvoiceLocale,
   GenerateRequest,
-  ValidationResult,
+  FormatInfo,
+  LegalWarning,
   AccountInfo,
   GenerateResponse,
   ValidationError,
   ErrorResponse,
+  DryRunResponse,
+  RetrieveRequest,
+  DetectedFormat,
+  RetrieveError,
+  RetrieveResponse,
   InvoiceResult,
 } from './types';

@@ -1,8 +1,8 @@
-name: envoice
-description: Official Dart SDK for envoice.dev - Generate ZUGFeRD/Factur-X invoices
-version: 0.1.0
-homepage: https://envoice.dev
-repository: https://github.com/steviee/envoice-clients
+name: thelawin
+description: Official Dart SDK for thelawin.dev - Generate ZUGFeRD/Factur-X e-invoices
+version: 0.2.0
+homepage: https://thelawin.dev
+repository: https://github.com/steviee/thelawin-clients
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

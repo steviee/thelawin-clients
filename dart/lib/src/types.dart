@@ -1,3 +1,35 @@
+/// Supported invoice output formats
+enum InvoiceFormat {
+  auto,
+  zugferd,
+  facturx,
+  xrechnung,
+  ubl,
+  cii,
+  peppol,
+  fatturapa,
+  pdf;
+
+  String toJson() => name;
+}
+
+/// ZUGFeRD/Factur-X conformance profile
+enum InvoiceProfile {
+  minimum,
+  basicWl,
+  basic,
+  en16931,
+  extended;
+
+  String toJson() => switch (this) {
+        InvoiceProfile.minimum => 'MINIMUM',
+        InvoiceProfile.basicWl => 'BASIC_WL',
+        InvoiceProfile.basic => 'BASIC',
+        InvoiceProfile.en16931 => 'EN16931',
+        InvoiceProfile.extended => 'EXTENDED',
+      };
+}
+
 /// Party (seller or buyer) information
 class Party {
   final String name;
@@ -9,6 +41,21 @@ class Party {
   final String? email;
   final String? phone;
 
+  /// Peppol endpoint ID (e.g. "0088:1234567890123")
+  final String? endpointId;
+
+  /// Peppol endpoint scheme (e.g. "0088")
+  final String? endpointScheme;
+
+  /// Italian fiscal code (Codice Fiscale) for FatturaPA
+  final String? codiceFiscale;
+
+  /// Italian SDI destination code for FatturaPA
+  final String? codiceDestinatario;
+
+  /// Italian PEC email for FatturaPA
+  final String? pecDestinatario;
+
   Party({
     required this.name,
     this.street,
@@ -18,6 +65,11 @@ class Party {
     this.vatId,
     this.email,
     this.phone,
+    this.endpointId,
+    this.endpointScheme,
+    this.codiceFiscale,
+    this.codiceDestinatario,
+    this.pecDestinatario,
   });
 
   Map<String, dynamic> toJson() => {
@@ -29,6 +81,11 @@ class Party {
         if (vatId != null) 'vatId': vatId,
         if (email != null) 'email': email,
         if (phone != null) 'phone': phone,
+        if (endpointId != null) 'endpointId': endpointId,
+        if (endpointScheme != null) 'endpointScheme': endpointScheme,
+        if (codiceFiscale != null) 'codiceFiscale': codiceFiscale,
+        if (codiceDestinatario != null) 'codiceDestinatario': codiceDestinatario,
+        if (pecDestinatario != null) 'pecDestinatario': pecDestinatario,
       };
 }
 
@@ -40,12 +97,16 @@ class LineItem {
   final double unitPrice;
   final double vatRate;
 
+  /// Italian tax nature code for zero-rate VAT (e.g. "N1", "N2.2")
+  final String? natura;
+
   LineItem({
     required this.description,
     required this.quantity,
     this.unit = 'C62',
     required this.unitPrice,
     this.vatRate = 19.0,
+    this.natura,
   });
 
   Map<String, dynamic> toJson() => {
@@ -54,6 +115,7 @@ class LineItem {
         'unit': unit,
         'unitPrice': unitPrice,
         'vatRate': vatRate,
+        if (natura != null) 'natura': natura,
       };
 }
 
@@ -74,7 +136,7 @@ class PaymentInfo {
       };
 }
 
-/// Validation result
+/// Validation result from a generate response
 class ValidationResult {
   final String status;
   final String profile;
@@ -121,7 +183,7 @@ class AccountInfo {
       );
 }
 
-/// Validation error
+/// Validation error detail
 class ValidationError {
   final String path;
   final String code;
@@ -140,5 +202,144 @@ class ValidationError {
         code: json['code'] as String,
         message: json['message'] as String,
         severity: json['severity'] as String?,
+      );
+}
+
+/// Information about the detected format of a retrieved invoice
+class FormatInfo {
+  final String format;
+  final String? profile;
+  final String? version;
+
+  FormatInfo({
+    required this.format,
+    this.profile,
+    this.version,
+  });
+
+  factory FormatInfo.fromJson(Map<String, dynamic> json) => FormatInfo(
+        format: json['format'] as String,
+        profile: json['profile'] as String?,
+        version: json['version'] as String?,
+      );
+}
+
+/// Detected format from a retrieve response
+class DetectedFormat {
+  final String format;
+  final String? profile;
+  final String? version;
+  final String? standard;
+
+  DetectedFormat({
+    required this.format,
+    this.profile,
+    this.version,
+    this.standard,
+  });
+
+  factory DetectedFormat.fromJson(Map<String, dynamic> json) => DetectedFormat(
+        format: json['format'] as String,
+        profile: json['profile'] as String?,
+        version: json['version'] as String?,
+        standard: json['standard'] as String?,
+      );
+}
+
+/// Error detail from a retrieve response
+class RetrieveError {
+  final String code;
+  final String message;
+
+  RetrieveError({
+    required this.code,
+    required this.message,
+  });
+
+  factory RetrieveError.fromJson(Map<String, dynamic> json) => RetrieveError(
+        code: json['code'] as String,
+        message: json['message'] as String,
+      );
+}
+
+/// Response from the /v1/retrieve endpoint
+class RetrieveResponse {
+  final Map<String, dynamic>? invoice;
+  final DetectedFormat? detectedFormat;
+  final String? sourceXml;
+  final List<RetrieveError>? errors;
+  final AccountInfo? account;
+
+  RetrieveResponse({
+    this.invoice,
+    this.detectedFormat,
+    this.sourceXml,
+    this.errors,
+    this.account,
+  });
+
+  bool get isSuccess => invoice != null && (errors == null || errors!.isEmpty);
+  bool get isFailure => !isSuccess;
+
+  factory RetrieveResponse.fromJson(Map<String, dynamic> json) => RetrieveResponse(
+        invoice: json['invoice'] as Map<String, dynamic>?,
+        detectedFormat: json['detectedFormat'] != null
+            ? DetectedFormat.fromJson(json['detectedFormat'] as Map<String, dynamic>)
+            : null,
+        sourceXml: json['sourceXml'] as String?,
+        errors: (json['errors'] as List?)
+            ?.map((e) => RetrieveError.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        account: json['account'] != null
+            ? AccountInfo.fromJson(json['account'] as Map<String, dynamic>)
+            : null,
+      );
+}
+
+/// Invoice data extracted by /v1/retrieve (typed wrapper)
+class InvoiceData {
+  final String? number;
+  final String? date;
+  final String? dueDate;
+  final Map<String, dynamic>? seller;
+  final Map<String, dynamic>? buyer;
+  final List<Map<String, dynamic>>? items;
+  final Map<String, dynamic>? payment;
+  final String? currency;
+  final String? notes;
+  final String? leitwegId;
+  final String? buyerReference;
+  final String? tipoDocumento;
+
+  InvoiceData({
+    this.number,
+    this.date,
+    this.dueDate,
+    this.seller,
+    this.buyer,
+    this.items,
+    this.payment,
+    this.currency,
+    this.notes,
+    this.leitwegId,
+    this.buyerReference,
+    this.tipoDocumento,
+  });
+
+  factory InvoiceData.fromJson(Map<String, dynamic> json) => InvoiceData(
+        number: json['number'] as String?,
+        date: json['date'] as String?,
+        dueDate: json['dueDate'] as String?,
+        seller: json['seller'] as Map<String, dynamic>?,
+        buyer: json['buyer'] as Map<String, dynamic>?,
+        items: (json['items'] as List?)
+            ?.map((e) => e as Map<String, dynamic>)
+            .toList(),
+        payment: json['payment'] as Map<String, dynamic>?,
+        currency: json['currency'] as String?,
+        notes: json['notes'] as String?,
+        leitwegId: json['leitwegId'] as String?,
+        buyerReference: json['buyerReference'] as String?,
+        tipoDocumento: json['tipoDocumento'] as String?,
       );
 }

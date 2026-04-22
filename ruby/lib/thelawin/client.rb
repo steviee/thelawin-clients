@@ -67,6 +67,37 @@ module Thelawin
       AccountInfo.new(data)
     end
 
+    # Extract invoice data from PDF/XML (reverse of /generate)
+    # @param data_base64 [String] Base64-encoded PDF or XML
+    # @param content_type [String, nil] MIME type (auto-detected if nil)
+    # @param include_source_xml [Boolean] Include raw XML in response
+    # @return [RetrieveResult]
+    def retrieve(data_base64, content_type: nil, include_source_xml: false)
+      body = { data_base64: data_base64 }
+      body[:content_type] = content_type if content_type
+      body[:include_source_xml] = true if include_source_xml
+
+      response = connection.post("/v1/retrieve") do |req|
+        req.body = body.to_json
+      end
+
+      case response.status
+      when 200
+        data = JSON.parse(response.body)
+        RetrieveResult.new(data)
+      when 402
+        data = JSON.parse(response.body)
+        raise QuotaExceededError, data["message"] || "Quota exceeded"
+      else
+        data = JSON.parse(response.body) rescue { "error" => "unknown_error", "message" => "HTTP #{response.status}" }
+        raise ApiError.new(data["message"] || data["error"], response.status, data["error"])
+      end
+    rescue Faraday::TimeoutError
+      raise NetworkError, "Request timeout"
+    rescue Faraday::ConnectionFailed => e
+      raise NetworkError.new("Connection failed", e)
+    end
+
     private
 
     def generate_invoice_internal(request)

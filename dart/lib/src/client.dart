@@ -5,17 +5,17 @@ import 'errors.dart';
 import 'invoice.dart';
 import 'types.dart';
 
-/// Main client for interacting with the envoice.dev API
-class EnvoiceClient {
+/// Main client for interacting with the thelawin.dev API
+class ThelawinClient {
   final String apiKey;
   final String apiUrl;
   final Duration timeout;
   final http.Client _client;
 
-  /// Create a new EnvoiceClient
-  EnvoiceClient(
+  /// Create a new ThelawinClient
+  ThelawinClient(
     this.apiKey, {
-    this.apiUrl = 'https://api.envoice.dev',
+    this.apiUrl = 'https://api.thelawin.dev',
     this.timeout = const Duration(seconds: 30),
     http.Client? client,
   }) : _client = client ?? http.Client() {
@@ -27,7 +27,7 @@ class EnvoiceClient {
   /// Create a new invoice builder
   InvoiceBuilder invoice() => InvoiceBuilder(this);
 
-  /// Generate an invoice directly
+  /// Generate an invoice directly from a request map
   Future<InvoiceResult> generateInvoice(Map<String, dynamic> request) async {
     try {
       final response = await _client
@@ -43,10 +43,10 @@ class EnvoiceClient {
 
       return _handleGenerateResponse(response);
     } on http.ClientException catch (e) {
-      throw EnvoiceNetworkException('Network error: ${e.message}', e);
+      throw ThelawinNetworkException('Network error: ${e.message}', e);
     } catch (e) {
-      if (e is EnvoiceException) rethrow;
-      throw EnvoiceNetworkException('Unknown error: $e', e);
+      if (e is ThelawinException) rethrow;
+      throw ThelawinNetworkException('Unknown error: $e', e);
     }
   }
 
@@ -63,7 +63,7 @@ class EnvoiceClient {
         );
 
       case 402:
-        throw EnvoiceQuotaExceededException(body['message'] as String? ?? 'Quota exceeded');
+        throw ThelawinQuotaExceededException(body['message'] as String? ?? 'Quota exceeded');
 
       case 422:
         final details = body['details'] as List?;
@@ -72,14 +72,14 @@ class EnvoiceClient {
             details.map((e) => ValidationError.fromJson(e as Map<String, dynamic>)).toList(),
           );
         }
-        throw EnvoiceApiException(
+        throw ThelawinApiException(
           body['message'] as String? ?? body['error'] as String,
           422,
           body['error'] as String?,
         );
 
       default:
-        throw EnvoiceApiException(
+        throw ThelawinApiException(
           body['message'] as String? ?? 'HTTP ${response.statusCode}',
           response.statusCode,
           body['error'] as String?,
@@ -87,8 +87,8 @@ class EnvoiceClient {
     }
   }
 
-  /// Validate an existing PDF
-  Future<Map<String, dynamic>> validate(String pdfBase64) async {
+  /// Validate invoice JSON without generating a PDF
+  Future<Map<String, dynamic>> validate(Map<String, dynamic> request) async {
     try {
       final response = await _client
           .post(
@@ -97,13 +97,13 @@ class EnvoiceClient {
               'Content-Type': 'application/json',
               'X-API-Key': apiKey,
             },
-            body: jsonEncode({'pdf_base64': pdfBase64}),
+            body: jsonEncode(request),
           )
           .timeout(timeout);
 
       if (response.statusCode != 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
-        throw EnvoiceApiException(
+        throw ThelawinApiException(
           body['message'] as String? ?? 'HTTP ${response.statusCode}',
           response.statusCode,
           body['error'] as String?,
@@ -112,11 +112,59 @@ class EnvoiceClient {
 
       return jsonDecode(response.body) as Map<String, dynamic>;
     } on http.ClientException catch (e) {
-      throw EnvoiceNetworkException('Network error: ${e.message}', e);
+      throw ThelawinNetworkException('Network error: ${e.message}', e);
     }
   }
 
-  /// Get account information
+  /// Extract invoice data from a PDF or XML document
+  ///
+  /// [dataBase64] - Base64-encoded PDF or XML content
+  /// [contentType] - MIME type hint (e.g. "application/pdf", "text/xml")
+  /// [includeSourceXml] - Whether to include the raw source XML in the response
+  Future<RetrieveResponse> retrieve(
+    String dataBase64, {
+    String? contentType,
+    bool includeSourceXml = false,
+  }) async {
+    try {
+      final request = <String, dynamic>{
+        'data_base64': dataBase64,
+        if (contentType != null) 'content_type': contentType,
+        if (includeSourceXml) 'include_source_xml': true,
+      };
+
+      final response = await _client
+          .post(
+            Uri.parse('$apiUrl/v1/retrieve'),
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': apiKey,
+            },
+            body: jsonEncode(request),
+          )
+          .timeout(timeout);
+
+      if (response.statusCode != 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        throw ThelawinApiException(
+          body['message'] as String? ?? 'HTTP ${response.statusCode}',
+          response.statusCode,
+          body['error'] as String?,
+        );
+      }
+
+      return RetrieveResponse.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    } on http.ClientException catch (e) {
+      throw ThelawinNetworkException('Network error: ${e.message}', e);
+    } catch (e) {
+      if (e is ThelawinException) rethrow;
+      throw ThelawinNetworkException('Unknown error: $e', e);
+    }
+  }
+
+  /// Get account information (plan, remaining credits)
   Future<AccountInfo> getAccount() async {
     try {
       final response = await _client
@@ -128,7 +176,7 @@ class EnvoiceClient {
 
       if (response.statusCode != 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
-        throw EnvoiceApiException(
+        throw ThelawinApiException(
           body['message'] as String? ?? 'HTTP ${response.statusCode}',
           response.statusCode,
           body['error'] as String?,
@@ -137,10 +185,10 @@ class EnvoiceClient {
 
       return AccountInfo.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
     } on http.ClientException catch (e) {
-      throw EnvoiceNetworkException('Network error: ${e.message}', e);
+      throw ThelawinNetworkException('Network error: ${e.message}', e);
     }
   }
 
-  /// Close the client
+  /// Close the HTTP client and release resources
   void close() => _client.close();
 }

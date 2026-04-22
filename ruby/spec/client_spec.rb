@@ -235,4 +235,105 @@ RSpec.describe Thelawin::Client do
       expect(account.remaining).to eq(450)
     end
   end
+
+  describe "#retrieve" do
+    it "extracts invoice data from PDF" do
+      stub_request(:post, "https://api.thelawin.dev/v1/retrieve")
+        .to_return(
+          status: 200,
+          body: {
+            valid: true,
+            format: { detected_format: "zugferd", profile: "EN16931", xml_type: "CII", has_pdf: true },
+            invoice: { number: "RE-2026-001", date: "2026-01-15", seller: { name: "Acme GmbH" }, buyer: { name: "Customer AG" }, items: [] },
+            transaction_id: "tx_abc123",
+            errors: [],
+            warnings: []
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      result = client.retrieve("JVBERi0xLjQK...")
+
+      expect(result).to be_valid
+      expect(result.format.detected_format).to eq("zugferd")
+      expect(result.format.has_pdf).to be true
+      expect(result.invoice["number"]).to eq("RE-2026-001")
+      expect(result.transaction_id).to eq("tx_abc123")
+    end
+
+    it "extracts invoice data from XML" do
+      stub_request(:post, "https://api.thelawin.dev/v1/retrieve")
+        .to_return(
+          status: 200,
+          body: {
+            valid: true,
+            format: { detected_format: "ubl", xml_type: "UBL", has_pdf: false },
+            invoice: { number: "UBL-001" },
+            transaction_id: "tx_def456",
+            errors: [],
+            warnings: []
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      result = client.retrieve("PHhtbD4...", content_type: "application/xml")
+
+      expect(result.format.detected_format).to eq("ubl")
+      expect(result.format.has_pdf).to be false
+    end
+
+    it "includes source XML when requested" do
+      stub_request(:post, "https://api.thelawin.dev/v1/retrieve")
+        .to_return(
+          status: 200,
+          body: {
+            valid: true,
+            format: { detected_format: "zugferd", has_pdf: true },
+            invoice: { number: "001" },
+            source_xml_base64: "PHhtbCB2ZXJzaW9uPQ==",
+            transaction_id: "tx_ghi789",
+            errors: [],
+            warnings: []
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      result = client.retrieve("JVBERi0...", include_source_xml: true)
+
+      expect(result.source_xml_base64).to eq("PHhtbCB2ZXJzaW9uPQ==")
+    end
+
+    it "returns errors for invalid files" do
+      stub_request(:post, "https://api.thelawin.dev/v1/retrieve")
+        .to_return(
+          status: 200,
+          body: {
+            valid: false,
+            format: { detected_format: "unknown" },
+            invoice: nil,
+            transaction_id: "tx_err",
+            errors: [{ code: "INVALID_FILE", message: "No e-invoice data found", severity: "error" }],
+            warnings: []
+          }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      result = client.retrieve("notapdf")
+
+      expect(result).not_to be_valid
+      expect(result.errors.length).to eq(1)
+      expect(result.errors.first.code).to eq("INVALID_FILE")
+    end
+
+    it "raises QuotaExceededError on 402" do
+      stub_request(:post, "https://api.thelawin.dev/v1/retrieve")
+        .to_return(
+          status: 402,
+          body: { error: "quota_exceeded", message: "Quota exceeded" }.to_json,
+          headers: { "Content-Type" => "application/json" }
+        )
+
+      expect { client.retrieve("JVBERi0...") }.to raise_error(Thelawin::QuotaExceededError)
+    end
+  end
 end

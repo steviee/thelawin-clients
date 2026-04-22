@@ -1,6 +1,6 @@
-# envoice.dev Client Libraries
+# thelawin.dev Client Libraries
 
-Official client libraries for the [envoice.dev](https://envoice.dev) ZUGFeRD/Factur-X API.
+Official client libraries for the [thelawin.dev](https://thelawin.dev) ZUGFeRD/Factur-X E-Invoicing API.
 
 Generate EU-compliant e-invoices with a simple, consistent API across all languages.
 
@@ -8,14 +8,14 @@ Generate EU-compliant e-invoices with a simple, consistent API across all langua
 
 | Language | Package | Install |
 |----------|---------|---------|
-| **TypeScript/JavaScript** | [@envoice/sdk](./typescript) | `npm install @envoice/sdk` |
-| **Python** | [envoice](./python) | `pip install envoice` |
-| **Ruby** | [envoice](./ruby) | `gem install envoice` |
-| **Swift** | [Envoice](./swift) | Swift Package Manager |
-| **Dart** | [envoice](./dart) | `dart pub add envoice` |
-| **Java** | [dev.envoice:sdk](./java) | Maven Central |
-| **Kotlin** | [dev.envoice:sdk](./kotlin) | Maven Central / Gradle |
-| **C#** | [Envoice](./csharp) | `dotnet add package Envoice` |
+| **TypeScript/JavaScript** | [@thelawin/sdk](./typescript) | `npm install @thelawin/sdk` |
+| **Python** | [thelawin](./python) | `pip install thelawin` |
+| **Ruby** | [thelawin](./ruby) | `gem install thelawin` |
+| **Kotlin** | [dev.thelawin:sdk](./kotlin) | Maven Central / Gradle |
+| **Java** | [dev.thelawin:sdk](./java) | Maven Central |
+| **Swift** | [Thelawin](./swift) | Swift Package Manager |
+| **Dart** | [thelawin](./dart) | `dart pub add thelawin` |
+| **C#** | [Thelawin](./csharp) | `dotnet add package Thelawin` |
 
 ## Quick Start
 
@@ -23,13 +23,14 @@ All SDKs share the same fluent API design:
 
 ```javascript
 // JavaScript/TypeScript
-import { EnvoiceClient } from '@envoice/sdk';
+import { ThelawinClient } from '@thelawin/sdk';
 
-const client = new EnvoiceClient('env_sandbox_xxx');
+const client = new ThelawinClient('env_sandbox_demo');
 
 const result = await client.invoice()
   .number('2026-001')
   .date('2026-01-15')
+  .format('zugferd')
   .seller({ name: 'Acme GmbH', vatId: 'DE123456789', city: 'Berlin', country: 'DE' })
   .buyer({ name: 'Customer AG', city: 'Munich', country: 'DE' })
   .addItem({ description: 'Consulting', quantity: 8, unit: 'HUR', unitPrice: 150 })
@@ -38,7 +39,6 @@ const result = await client.invoice()
 
 if (result.success) {
   result.downloadPdf();  // Browser: triggers download
-  // or: await result.savePdf('./invoice.pdf');  // Node.js
 } else {
   result.errors.forEach(e => console.error(`${e.path}: ${e.message}`));
 }
@@ -46,7 +46,9 @@ if (result.success) {
 
 ## Features
 
+- **9 Formats** - ZUGFeRD, Factur-X, XRechnung, Peppol, FatturaPA, UBL, CII, PDF
 - **Fluent Builder API** - Chain methods to build invoices
+- **Retrieve** - Extract invoice data from existing PDFs/XMLs
 - **Logo Support** - Load logos from files or URLs (auto Base64 encoding)
 - **Error Handling** - Detailed validation errors with JSON paths
 - **Type Safety** - Full TypeScript/type hint support
@@ -54,17 +56,18 @@ if (result.success) {
 
 ## API Key
 
-Get your API key at [envoice.dev/api-keys](https://envoice.dev/api-keys)
+Get your API key at [thelawin.dev/signup](https://thelawin.dev/signup)
 
-- **Sandbox keys** (`env_sandbox_*`): Free, unlimited, watermarked PDFs
+- **Demo key** (`env_sandbox_demo`): Free, no account needed, watermarked
+- **Sandbox keys** (`env_sandbox_*`): Free, 100 credits/month, watermarked
 - **Live keys** (`env_live_*`): Production use, requires paid plan
 
 ## Documentation
 
-- [API Documentation](https://envoice.dev/docs)
-- [Getting Started](https://envoice.dev/docs/getting-started)
-- [Templates](https://envoice.dev/docs/templates)
-- [Unit Codes](https://envoice.dev/docs/units)
+- [API Documentation](https://docs.thelawin.dev)
+- [Getting Started](https://docs.thelawin.dev/guide/getting-started)
+- [Formats](https://docs.thelawin.dev/guide/formats)
+- [Templates](https://docs.thelawin.dev/guide/templates)
 
 ## Contributing
 

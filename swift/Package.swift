@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "Envoice",
+    name: "Thelawin",
     platforms: [
         .macOS(.v12),
         .iOS(.v15),
@@ -11,19 +11,19 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "Envoice",
-            targets: ["Envoice"]
+            name: "Thelawin",
+            targets: ["Thelawin"]
         ),
     ],
     targets: [
         .target(
-            name: "Envoice",
-            path: "Sources/Envoice"
+            name: "Thelawin",
+            path: "Sources/Thelawin"
         ),
         .testTarget(
-            name: "EnvoiceTests",
-            dependencies: ["Envoice"],
-            path: "Tests/EnvoiceTests"
+            name: "ThelawinTests",
+            dependencies: ["Thelawin"],
+            path: "Tests/ThelawinTests"
         ),
     ]
 )

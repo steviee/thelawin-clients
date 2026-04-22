@@ -42,7 +42,7 @@ class InvoiceSuccess extends InvoiceResult {
   String toDataUrl() => 'data:application/pdf;base64,$pdfBase64';
 }
 
-/// Failed invoice generation
+/// Failed invoice generation with validation errors
 class InvoiceFailure extends InvoiceResult {
   final List<ValidationError> errors;
 
@@ -54,7 +54,7 @@ class InvoiceFailure extends InvoiceResult {
 
 /// Fluent builder for creating invoices
 class InvoiceBuilder {
-  final EnvoiceClient _client;
+  final ThelawinClient _client;
   String? _number;
   String? _date;
   String? _dueDate;
@@ -65,6 +65,12 @@ class InvoiceBuilder {
   String _currency = 'EUR';
   String _template = 'minimal';
   String _locale = 'en';
+  InvoiceFormat? _format;
+  InvoiceProfile? _profile;
+  String? _notes;
+  String? _leitwegId;
+  String? _buyerReference;
+  String? _tipoDocumento;
   String? _logoBase64;
   int? _logoWidthMm;
   String? _footerText;
@@ -90,19 +96,19 @@ class InvoiceBuilder {
     return this;
   }
 
-  /// Set the due date
+  /// Set the due date (YYYY-MM-DD)
   InvoiceBuilder dueDate(String value) {
     _dueDate = value;
     return this;
   }
 
-  /// Set the seller
+  /// Set the seller party
   InvoiceBuilder seller(Party party) {
     _seller = party;
     return this;
   }
 
-  /// Set the buyer
+  /// Set the buyer party
   InvoiceBuilder buyer(Party party) {
     _buyer = party;
     return this;
@@ -114,7 +120,7 @@ class InvoiceBuilder {
     return this;
   }
 
-  /// Set multiple items at once
+  /// Set multiple items at once (replaces any existing items)
   InvoiceBuilder items(List<LineItem> items) {
     _items
       ..clear()
@@ -128,25 +134,61 @@ class InvoiceBuilder {
     return this;
   }
 
-  /// Set the currency
+  /// Set the currency (ISO 4217, default: EUR)
   InvoiceBuilder currency(String value) {
     _currency = value;
     return this;
   }
 
-  /// Set the template
+  /// Set the PDF template (e.g. "minimal", "classic")
   InvoiceBuilder template(String value) {
     _template = value;
     return this;
   }
 
-  /// Set the locale
+  /// Set the locale for PDF rendering (e.g. "de", "en", "fr")
   InvoiceBuilder locale(String value) {
     _locale = value;
     return this;
   }
 
-  /// Set logo from file
+  /// Set the output format (zugferd, facturx, xrechnung, ubl, cii, peppol, fatturapa, pdf, auto)
+  InvoiceBuilder format(InvoiceFormat value) {
+    _format = value;
+    return this;
+  }
+
+  /// Set the ZUGFeRD/Factur-X conformance profile
+  InvoiceBuilder profile(InvoiceProfile value) {
+    _profile = value;
+    return this;
+  }
+
+  /// Set free-text notes / additional info
+  InvoiceBuilder notes(String value) {
+    _notes = value;
+    return this;
+  }
+
+  /// Set the German Leitweg-ID (required for XRechnung / German B2G)
+  InvoiceBuilder leitwegId(String value) {
+    _leitwegId = value;
+    return this;
+  }
+
+  /// Set the buyer reference (BT-10)
+  InvoiceBuilder buyerReference(String value) {
+    _buyerReference = value;
+    return this;
+  }
+
+  /// Set the Italian TipoDocumento (e.g. "TD01" invoice, "TD04" credit note)
+  InvoiceBuilder tipoDocumento(String value) {
+    _tipoDocumento = value;
+    return this;
+  }
+
+  /// Set logo from a file path
   Future<InvoiceBuilder> logoFile(String path, {int? widthMm}) async {
     final bytes = await File(path).readAsBytes();
     _logoBase64 = base64Encode(bytes);
@@ -154,7 +196,7 @@ class InvoiceBuilder {
     return this;
   }
 
-  /// Set logo from Base64
+  /// Set logo from Base64 data
   InvoiceBuilder logoBase64(String base64, {int? widthMm}) {
     _logoBase64 = base64;
     _logoWidthMm = widthMm;
@@ -167,13 +209,13 @@ class InvoiceBuilder {
     return this;
   }
 
-  /// Set accent color
+  /// Set accent color (hex, e.g. "#8b5cf6")
   InvoiceBuilder accentColor(String color) {
     _accentColor = color;
     return this;
   }
 
-  /// Generate the invoice
+  /// Generate the invoice (validates locally first, then calls the API)
   Future<InvoiceResult> generate() async {
     final errors = <ValidationError>[];
 
@@ -202,6 +244,8 @@ class InvoiceBuilder {
     final request = {
       'template': _template,
       'locale': _locale,
+      if (_format != null) 'format': _format!.toJson(),
+      if (_profile != null) 'profile': _profile!.toJson(),
       'invoice': {
         'number': _number,
         'date': _date,
@@ -211,6 +255,10 @@ class InvoiceBuilder {
         'items': _items.map((i) => i.toJson()).toList(),
         if (_payment != null) 'payment': _payment!.toJson(),
         'currency': _currency,
+        if (_notes != null) 'notes': _notes,
+        if (_leitwegId != null) 'leitwegId': _leitwegId,
+        if (_buyerReference != null) 'buyerReference': _buyerReference,
+        if (_tipoDocumento != null) 'tipoDocumento': _tipoDocumento,
       },
       if (hasCustomization)
         'customization': {

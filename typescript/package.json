@@ -1,7 +1,7 @@
 {
-  "name": "@envoice/sdk",
-  "version": "0.1.0",
-  "description": "Official envoice.dev SDK for generating ZUGFeRD/Factur-X invoices",
+  "name": "@thelawin/sdk",
+  "version": "0.2.0",
+  "description": "Official thelawin.dev SDK for generating ZUGFeRD/Factur-X e-invoices",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -23,31 +23,35 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "envoice",
+    "thelawin",
     "zugferd",
     "factur-x",
+    "xrechnung",
+    "peppol",
+    "fatturapa",
     "invoice",
-    "pdf",
     "e-invoice",
+    "pdf",
     "eu",
     "en16931"
   ],
-  "author": "envoice.dev",
+  "author": "thelawin.dev",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/steviee/envoice-clients.git",
+    "url": "git+https://github.com/steviee/thelawin-clients.git",
     "directory": "typescript"
   },
-  "homepage": "https://envoice.dev",
+  "homepage": "https://thelawin.dev",
   "bugs": {
-    "url": "https://github.com/steviee/envoice-clients/issues"
+    "url": "https://github.com/steviee/thelawin-clients/issues"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

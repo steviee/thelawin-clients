@@ -3,21 +3,23 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "envoice"
-version = "0.1.0"
-description = "Official Python SDK for envoice.dev - Generate ZUGFeRD/Factur-X invoices"
+name = "thelawin"
+version = "0.2.0"
+description = "Official Python SDK for thelawin.dev - Generate ZUGFeRD/Factur-X e-invoices"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 authors = [
-    { name = "envoice.dev", email = "support@envoice.dev" }
+    { name = "thelawin.dev", email = "hello@thelawin.dev" }
 ]
 keywords = [
-    "envoice",
+    "thelawin",
     "zugferd",
     "factur-x",
+    "xrechnung",
+    "peppol",
+    "fatturapa",
     "invoice",
-    "pdf",
     "e-invoice",
     "eu",
     "en16931"
@@ -51,13 +53,13 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://envoice.dev"
-Documentation = "https://envoice.dev/docs"
-Repository = "https://github.com/steviee/envoice-clients"
-Issues = "https://github.com/steviee/envoice-clients/issues"
+Homepage = "https://thelawin.dev"
+Documentation = "https://docs.thelawin.dev"
+Repository = "https://github.com/steviee/thelawin-clients"
+Issues = "https://github.com/steviee/thelawin-clients/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["envoice"]
+packages = ["thelawin"]
 
 [tool.ruff]
 line-length = 100

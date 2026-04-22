@@ -1,33 +1,24 @@
 import type { ValidationError, ErrorResponse } from './types';
 
-/**
- * Base error class for all envoice SDK errors
- */
-export class EnvoiceError extends Error {
+export class ThelawinError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'EnvoiceError';
+    this.name = 'ThelawinError';
   }
 }
 
-/**
- * Error thrown when the API returns a validation error
- */
-export class EnvoiceValidationError extends EnvoiceError {
+export class ThelawinValidationError extends ThelawinError {
   public readonly errors: ValidationError[];
   public readonly statusCode: number;
 
   constructor(errors: ValidationError[], statusCode = 422) {
     const message = errors.map(e => `${e.path}: ${e.message}`).join('; ');
     super(`Validation failed: ${message}`);
-    this.name = 'EnvoiceValidationError';
+    this.name = 'ThelawinValidationError';
     this.errors = errors;
     this.statusCode = statusCode;
   }
 
-  /**
-   * Get a user-friendly error message
-   */
   toUserMessage(): string {
     return this.errors
       .map(e => `- ${e.path}: ${e.message}`)
@@ -35,25 +26,22 @@ export class EnvoiceValidationError extends EnvoiceError {
   }
 }
 
-/**
- * Error thrown when the API returns an HTTP error
- */
-export class EnvoiceApiError extends EnvoiceError {
+export class ThelawinApiError extends ThelawinError {
   public readonly statusCode: number;
   public readonly code?: string;
 
   constructor(message: string, statusCode: number, code?: string) {
     super(message);
-    this.name = 'EnvoiceApiError';
+    this.name = 'ThelawinApiError';
     this.statusCode = statusCode;
     this.code = code;
   }
 
-  static fromResponse(response: ErrorResponse, statusCode: number): EnvoiceApiError {
+  static fromResponse(response: ErrorResponse, statusCode: number): ThelawinApiError {
     if (response.details && response.details.length > 0) {
-      return new EnvoiceValidationError(response.details, statusCode);
+      return new ThelawinValidationError(response.details, statusCode);
     }
-    return new EnvoiceApiError(
+    return new ThelawinApiError(
       response.message || response.error || 'Unknown error',
       statusCode,
       response.error
@@ -61,25 +49,19 @@ export class EnvoiceApiError extends EnvoiceError {
   }
 }
 
-/**
- * Error thrown when network request fails
- */
-export class EnvoiceNetworkError extends EnvoiceError {
+export class ThelawinNetworkError extends ThelawinError {
   public readonly cause?: Error;
 
   constructor(message: string, cause?: Error) {
     super(message);
-    this.name = 'EnvoiceNetworkError';
+    this.name = 'ThelawinNetworkError';
     this.cause = cause;
   }
 }
 
-/**
- * Error thrown when quota is exceeded
- */
-export class EnvoiceQuotaExceededError extends EnvoiceApiError {
+export class ThelawinQuotaExceededError extends ThelawinApiError {
   constructor(message: string) {
     super(message, 402, 'quota_exceeded');
-    this.name = 'EnvoiceQuotaExceededError';
+    this.name = 'ThelawinQuotaExceededError';
   }
 }
