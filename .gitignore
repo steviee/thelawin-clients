@@ -12,6 +12,7 @@ obj/
 *.pyc
 __pycache__/
 *.egg-info/
+*.gem
 .pytest_cache/
 .rspec_status
 .ruby-lsp/
