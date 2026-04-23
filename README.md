@@ -8,14 +8,14 @@ Generate EU-compliant e-invoices with a simple, consistent API across all langua
 
 | Language | Package | Install |
 |----------|---------|---------|
-| **TypeScript/JavaScript** | [@thelawin/sdk](./typescript) | `npm install @thelawin/sdk` |
-| **Python** | [thelawin](./python) | `pip install thelawin` |
-| **Ruby** | [thelawin](./ruby) | `gem install thelawin` |
-| **Kotlin** | [dev.thelawin:sdk](./kotlin) | Maven Central / Gradle |
-| **Java** | [dev.thelawin:sdk](./java) | Maven Central |
-| **Swift** | [Thelawin](./swift) | Swift Package Manager |
-| **Dart** | [thelawin](./dart) | `dart pub add thelawin` |
-| **C#** | [Thelawin](./csharp) | `dotnet add package Thelawin` |
+| **TypeScript/JavaScript** | [@thelawin/sdk](./typescript) | `npm install github:steviee/thelawin-clients#path:typescript` |
+| **Python** | [thelawin](./python) | `pip install git+https://github.com/steviee/thelawin-clients.git#subdirectory=python` |
+| **Ruby** | [thelawin](./ruby) | `gem install thelawin` (RubyGems) |
+| **Kotlin** | [dev.thelawin:sdk](./kotlin) | JitPack or local build |
+| **Java** | [dev.thelawin:sdk](./java) | JitPack or local build |
+| **Swift** | [Thelawin](./swift) | SPM: `https://github.com/steviee/thelawin-clients.git` |
+| **Dart** | [thelawin](./dart) | Git dependency (see [dart/README](./dart)) |
+| **C#** | [Thelawin](./csharp) | Local build or Git submodule |
 
 ## Quick Start
 
